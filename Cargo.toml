@@ -1,0 +1,10 @@
+[package]
+name = "lsof"
+version = "0.1.0"
+edition = "2024"
+description = "lsof-style process and socket inspection for Windows"
+license = "MIT"
+repository = "https://github.com/i-rocky/lsof"
+
+[dependencies]
+csv = "1.3"
