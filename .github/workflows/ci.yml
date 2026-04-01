@@ -23,7 +23,7 @@ jobs:
       - name: Test
         run: cargo test --locked
 
-  windows-smoke:
+  windows-gate:
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -31,6 +31,11 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Format
+        run: cargo fmt --all --check
 
       - name: Unit tests
         run: cargo test --locked

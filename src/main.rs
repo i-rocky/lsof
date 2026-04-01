@@ -2,6 +2,7 @@ mod cli;
 mod error;
 mod model;
 mod runtime;
+mod windows;
 
 use std::env;
 use std::process;
@@ -9,7 +10,7 @@ use std::process;
 use cli::{HELP_TEXT, USAGE, parse_args};
 use error::Error;
 use model::Action;
-use runtime::run_list;
+use runtime::{run_file, run_list};
 
 fn main() {
     match run(env::args().collect()) {
@@ -37,5 +38,6 @@ fn run(args: Vec<String>) -> Result<(), Error> {
             Ok(())
         }
         Action::List(opts) => run_list(opts),
+        Action::File(opts) => run_file(opts),
     }
 }

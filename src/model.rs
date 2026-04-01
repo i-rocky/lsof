@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Protocol {
@@ -31,10 +32,16 @@ pub(crate) struct Options {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct FileOptions {
+    pub(crate) path: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Action {
     Help,
     Version,
     List(Options),
+    File(FileOptions),
 }
 
 #[derive(Debug, Clone)]
@@ -54,4 +61,17 @@ pub(crate) struct DisplayRow {
     pub(crate) local_address: String,
     pub(crate) foreign_address: String,
     pub(crate) state: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ProcessInfo {
+    pub(crate) command: String,
+    pub(crate) process_path: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct FileUseRow {
+    pub(crate) command: String,
+    pub(crate) pid: u32,
+    pub(crate) process_path: String,
 }

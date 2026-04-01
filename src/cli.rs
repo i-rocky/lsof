@@ -1,15 +1,16 @@
 use std::collections::HashSet;
+use std::path::PathBuf;
 
 use crate::error::Error;
-use crate::model::{Action, NetFilter, Options, Protocol};
+use crate::model::{Action, FileOptions, NetFilter, Options, Protocol};
 
-pub(crate) const USAGE: &str =
-    "usage: lsof [-nP] [-t] [-p pid[,pid...]] [-i [tcp|udp][@host][:port]]";
+pub(crate) const USAGE: &str = "usage: lsof [-nP] [-t] [-p pid[,pid...]] [-i [tcp|udp][@host][:port]]\n       lsof file <path>";
 
 pub(crate) const HELP_TEXT: &str =
     "usage: lsof [-nP] [-t] [-p pid[,pid...]] [-i [tcp|udp][@host][:port]]
+       lsof file <path>
 
-List open sockets in an lsof-style view on Windows.
+List open sockets in an lsof-style view on Windows and query file-in-use ownership.
 
 Options:
  -i [spec]   select by socket spec; supports proto tcp/udp, host, and port
@@ -17,6 +18,7 @@ Options:
  -P          accepted for lsof compatibility (numeric ports)
  -p <pids>   filter by PID list (comma-separated)
  -t          terse mode (print PIDs only)
+ file <path> show processes currently using a file
  -h, --help  display this help
  -v, --version
              display version
@@ -26,9 +28,16 @@ Examples:
  lsof -i :3000
  lsof -i tcp:443
  lsof -i udp@127.0.0.1:53
- lsof -t -i :8080";
+ lsof -t -i :8080
+ lsof file C:\\path\\to\\app.log";
 
 pub(crate) fn parse_args(args: &[String]) -> Result<Action, Error> {
+    if let Some(subcommand) = args.first() {
+        if subcommand == "file" {
+            return parse_file_args(&args[1..]);
+        }
+    }
+
     let mut opts = Options::default();
     let mut i = 0;
 
@@ -99,6 +108,23 @@ pub(crate) fn parse_args(args: &[String]) -> Result<Action, Error> {
     }
 
     Ok(Action::List(opts))
+}
+
+fn parse_file_args(args: &[String]) -> Result<Action, Error> {
+    let raw = args
+        .first()
+        .ok_or_else(|| Error::Usage("file requires a path".to_string()))?;
+
+    if args.len() > 1 {
+        return Err(Error::Usage("file accepts exactly one path".to_string()));
+    }
+
+    let path = PathBuf::from(raw);
+    if path.as_os_str().is_empty() {
+        return Err(Error::Usage("file requires a path".to_string()));
+    }
+
+    Ok(Action::File(FileOptions { path }))
 }
 
 fn parse_pid_list(raw: &str) -> Result<HashSet<u32>, Error> {
@@ -223,6 +249,23 @@ mod tests {
 
         assert!(opts.include_network);
         assert_eq!(opts.net_filter, NetFilter::default());
+    }
+
+    #[test]
+    fn parse_file_subcommand() {
+        let action =
+            parse_args(&strings(&["file", "C:\\temp\\app.log"])).expect("parse should succeed");
+        let Action::File(opts) = action else {
+            panic!("expected file action");
+        };
+
+        assert_eq!(opts.path, PathBuf::from("C:\\temp\\app.log"));
+    }
+
+    #[test]
+    fn parse_file_subcommand_requires_path() {
+        let err = parse_args(&strings(&["file"])).expect_err("parse should fail");
+        assert_eq!(err.to_string(), "file requires a path");
     }
 
     #[test]

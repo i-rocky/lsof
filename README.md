@@ -1,21 +1,24 @@
 # lsof
 
-`lsof`-style socket and process inspection for Windows.
+Windows-first `lsof`-style socket, process, and file-in-use inspection.
 
-This tool focuses on the workflow most people use every day on Linux/macOS:
-checking which process owns a port and listing active TCP/UDP sockets.
+This project focuses on the Windows workflows that map cleanly from `lsof`:
+checking which process owns a port, listing active TCP/UDP sockets, and finding
+which process is using a file.
 
-## Scope (v0.1)
+## Scope (vNext)
 
 - `-i` filtering for protocol/host/port (`tcp`, `udp`, `@host`, `:port`)
 - `-p` PID filtering
 - `-t` terse PID-only output
 - accepts `-n` and `-P` for lsof compatibility
+- `file <path>` for targeted file-in-use inspection
 
-Current runtime is Windows-first and uses:
+Current runtime is Windows-first and uses native Windows APIs:
 
-- `netstat -ano -p tcp/udp`
-- `tasklist /FO CSV /NH`
+- IP Helper API for TCP/UDP socket ownership
+- `QueryFullProcessImageNameW()` for process metadata
+- Restart Manager for file-in-use ownership
 
 ## Usage
 
@@ -26,7 +29,15 @@ lsof -i tcp:443
 lsof -i udp@127.0.0.1:53
 lsof -t -i :8080
 lsof -p 1234,5678 -i
+lsof file C:\path\to\app.log
 ```
+
+## Non-goals
+
+- full Unix `lsof` parity
+- system-wide open-handle enumeration
+- file-descriptor-style output such as `cwd`, `txt`, `mem`, or numeric FD sets
+- non-Windows runtime support
 
 ## Install
 
@@ -62,8 +73,4 @@ cargo test
 Tagging `v*` publishes:
 
 - `lsof-windows-x86_64-vX.Y.Z.zip`
-- `lsof-linux-x86_64-vX.Y.Z.tar.gz`
-- `lsof-linux-aarch64-vX.Y.Z.tar.gz`
-- `lsof-darwin-x86_64-vX.Y.Z.tar.gz`
-- `lsof-darwin-aarch64-vX.Y.Z.tar.gz`
 - `SHA256SUMS.txt`
