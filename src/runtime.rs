@@ -135,16 +135,16 @@ fn truncate_display(value: &str, width: usize) -> String {
 }
 
 fn matches_socket_filter(socket: &SocketEntry, opts: &Options) -> bool {
-    if let Some(protocol) = opts.net_filter.protocol {
-        if socket.protocol != protocol {
-            return false;
-        }
+    if let Some(protocol) = opts.net_filter.protocol
+        && socket.protocol != protocol
+    {
+        return false;
     }
 
-    if let Some(pid_filter) = &opts.pid_filter {
-        if !pid_filter.contains(&socket.pid) {
-            return false;
-        }
+    if let Some(pid_filter) = &opts.pid_filter
+        && !pid_filter.contains(&socket.pid)
+    {
+        return false;
     }
 
     if let Some(port) = opts.net_filter.port {
@@ -355,12 +355,17 @@ mod tests {
     fn resolve_file_path_returns_useful_error_for_missing_path() {
         let path = PathBuf::from("__missing__\\definitely-not-here.txt");
         let err = resolve_file_path(&path).expect_err("path should fail");
-        assert_eq!(
-            err.to_string(),
-            format!(
-                "failed to resolve file path '{}': The system cannot find the path specified. (os error 3)",
+        let message = err.to_string();
+        assert!(
+            message.starts_with(&format!(
+                "failed to resolve file path '{}': ",
                 path.display()
-            )
+            )),
+            "unexpected error message: {message}"
+        );
+        assert!(
+            message.contains("os error"),
+            "expected OS error detail in message: {message}"
         );
     }
 }

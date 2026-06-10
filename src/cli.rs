@@ -32,10 +32,10 @@ Examples:
  lsof file C:\\path\\to\\app.log";
 
 pub(crate) fn parse_args(args: &[String]) -> Result<Action, Error> {
-    if let Some(subcommand) = args.first() {
-        if subcommand == "file" {
-            return parse_file_args(&args[1..]);
-        }
+    if let Some(subcommand) = args.first()
+        && subcommand == "file"
+    {
+        return parse_file_args(&args[1..]);
     }
 
     let mut opts = Options::default();
@@ -64,11 +64,11 @@ pub(crate) fn parse_args(args: &[String]) -> Result<Action, Error> {
 
         if arg == "-i" {
             opts.include_network = true;
-            if let Some(value) = args.get(i + 1) {
-                if !value.starts_with('-') {
-                    opts.net_filter = parse_i_spec(value)?;
-                    i += 1;
-                }
+            if let Some(value) = args.get(i + 1)
+                && !value.starts_with('-')
+            {
+                opts.net_filter = parse_i_spec(value)?;
+                i += 1;
             }
             i += 1;
             continue;
