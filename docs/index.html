@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lsof for Windows — which process owns that port or file</title>
+<meta name="description" content="A Windows-native lsof-style tool: list TCP/UDP sockets with -i, filter by PID, get terse -t output, and find which process is holding a file via the Restart Manager.">
+<style>
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #f85149;
+  --accent-dim: #5c1e1e;
+  --good: #3fb950;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+code, pre, .term { font-family: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, Consolas, monospace; }
+.wrap { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+header { padding: 72px 0 40px; text-align: center; }
+.logo { font-size: 44px; font-weight: 700; letter-spacing: -1px; }
+.logo .bar { color: var(--accent); }
+.tagline { color: var(--muted); font-size: 20px; margin-top: 8px; }
+.badges { margin-top: 20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.badge {
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 4px 14px; font-size: 13px; color: var(--muted);
+}
+.badge.hot { border-color: var(--accent-dim); color: var(--accent); }
+.cta { margin-top: 28px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.btn {
+  display: inline-block; padding: 10px 22px; border-radius: 8px;
+  text-decoration: none; font-weight: 600; font-size: 15px;
+}
+.btn.primary { background: var(--accent); color: #04121f; }
+.btn.ghost { border: 1px solid var(--border); color: var(--text); }
+.term {
+  background: #010409; border: 1px solid var(--border); border-radius: 10px;
+  padding: 18px 20px; font-size: 13.5px; line-height: 1.7; overflow-x: auto;
+  text-align: left; white-space: pre; color: #c9d1d9;
+}
+.term .dim { color: var(--muted); }
+.term .pct { color: var(--good); }
+.term .fill { color: var(--accent); }
+.hero-term { margin: 36px auto 0; max-width: 820px; }
+section { padding: 40px 0; border-top: 1px solid var(--border); }
+h2 { font-size: 26px; margin-bottom: 18px; letter-spacing: -0.5px; }
+h3 { font-size: 18px; margin: 22px 0 8px; }
+p { color: var(--muted); margin-bottom: 12px; }
+p strong, li strong { color: var(--text); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 20px; }
+.card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 18px 20px;
+}
+.card h3 { margin: 0 0 8px; font-size: 16px; }
+.card p { font-size: 14px; margin: 0; }
+pre.snippet {
+  background: #010409; border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px 18px; font-size: 14px; overflow-x: auto; margin: 10px 0 18px;
+}
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 14px 0; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-weight: 600; }
+td code { background: var(--panel); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+footer { padding: 36px 0 48px; color: var(--muted); font-size: 14px; text-align: center; }
+footer a { color: var(--accent); text-decoration: none; }
+a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <div class="logo">ls<span class="bar">of</span></div>
+  <div class="tagline">Unix muscle memory for "who owns that port?" — native on Windows.</div>
+  <div class="badges">
+    <span class="badge hot">Windows-native</span>
+    <span class="badge">Single binary</span>
+    <span class="badge">Rust</span>
+    <span class="badge">MIT</span>
+  </div>
+  <div class="cta">
+    <a class="btn primary" href="#install">Install</a>
+    <a class="btn ghost" href="https://github.com/i-rocky/lsof">GitHub</a>
+  </div>
+  <div class="term hero-term"><span class="dim">&gt;</span> <span class="fill">lsof</span> -i :3000
+<span class="dim">COMMAND                     PID PROTO LOCAL_ADDRESS                  FOREIGN_ADDRESS                STATE</span>
+node.exe                   4312 TCP   0.0.0.0:3000                   0.0.0.0:0                      <span class="pct">LISTEN</span>
+node.exe                   4312 TCP   127.0.0.1:3000                 127.0.0.1:52114                ESTABLISHED</div>
+</header>
+
+<section class="wrap" id="why">
+  <h2>Why</h2>
+  <p>Your fingers type <code>lsof -i :3000</code> on every machine — but on Windows the
+  answer is a tour of <code>netstat -ano</code>, Task Manager, and Resource Monitor.
+  This is a Windows-first <code>lsof</code>-style tool covering the workflows that map
+  cleanly from Unix: which process owns a port, what TCP/UDP sockets are live, and
+  which process is holding a file you can't delete.</p>
+  <div class="grid">
+    <div class="card"><h3>The flags you already know</h3><p><code>-i</code> with <code>tcp</code>/<code>udp</code>, <code>@host</code>, and <code>:port</code> specs, <code>-p</code> PID filtering, <code>-t</code> terse PID-only output. <code>-n</code> and <code>-P</code> are accepted for lsof compatibility.</p></div>
+    <div class="card"><h3>Native Windows APIs</h3><p>IP Helper API for TCP/UDP socket ownership, <code>QueryFullProcessImageNameW()</code> for process metadata, and the Restart Manager for file-in-use ownership. No shelling out, no parsing netstat.</p></div>
+    <div class="card"><h3>Who's holding that file?</h3><p><code>lsof file C:\path\to\app.log</code> asks the Windows Restart Manager which processes are currently using a file — the exact thing you need before a delete or rename fails.</p></div>
+  </div>
+  <h3>Non-goals</h3>
+  <p>Windows-only by design. It does not aim for full Unix <code>lsof</code> parity,
+  system-wide open-handle enumeration, or file-descriptor-style output such as
+  <code>cwd</code>, <code>txt</code>, <code>mem</code>, or numeric FD sets.</p>
+</section>
+
+<section class="wrap" id="install">
+  <h2>Install</h2>
+  <h3>Windows (Scoop)</h3>
+  <pre class="snippet">scoop bucket add rocky https://github.com/i-rocky/scoop-bucket
+scoop install lsof</pre>
+  <h3>Manual (GitHub Releases)</h3>
+  <p>Download <code>lsof-windows-x86_64-vX.Y.Z.zip</code> from the
+  <a href="https://github.com/i-rocky/lsof/releases/latest">latest release</a>
+  (with <code>SHA256SUMS.txt</code>), then place <code>lsof.exe</code> on your <code>PATH</code>.</p>
+</section>
+
+<section class="wrap" id="usage">
+  <h2>Usage</h2>
+  <p>There is no setup. Install, then:</p>
+  <table>
+    <tr><th>Command</th><th>What it does</th></tr>
+    <tr><td><code>lsof -i</code></td><td>list all active TCP/UDP sockets with owning processes</td></tr>
+    <tr><td><code>lsof -i :3000</code></td><td>who owns port 3000</td></tr>
+    <tr><td><code>lsof -i tcp:443</code></td><td>TCP sockets on port 443</td></tr>
+    <tr><td><code>lsof -i udp@127.0.0.1:53</code></td><td>UDP sockets bound to 127.0.0.1 on port 53</td></tr>
+    <tr><td><code>lsof -t -i :8080</code></td><td>terse mode — print matching PIDs only (pipe-friendly)</td></tr>
+    <tr><td><code>lsof -p 1234,5678 -i</code></td><td>filter by a comma-separated PID list</td></tr>
+    <tr><td><code>lsof file C:\path\to\app.log</code></td><td>show processes currently using a file (Restart Manager)</td></tr>
+  </table>
+  <h3>Flags</h3>
+  <table>
+    <tr><th>Flag</th><th>Meaning</th></tr>
+    <tr><td><code>-i [spec]</code></td><td>select by socket spec; supports proto <code>tcp</code>/<code>udp</code>, host, and port — <code>[tcp|udp][@host][:port]</code></td></tr>
+    <tr><td><code>-p &lt;pids&gt;</code></td><td>filter by PID list (comma-separated)</td></tr>
+    <tr><td><code>-t</code></td><td>terse mode (print PIDs only)</td></tr>
+    <tr><td><code>-n</code></td><td>accepted for lsof compatibility (numeric hosts)</td></tr>
+    <tr><td><code>-P</code></td><td>accepted for lsof compatibility (numeric ports)</td></tr>
+    <tr><td><code>file &lt;path&gt;</code></td><td>show processes currently using a file</td></tr>
+    <tr><td><code>-h, --help</code></td><td>display help</td></tr>
+    <tr><td><code>-v, --version</code></td><td>display version</td></tr>
+  </table>
+</section>
+
+<footer class="wrap">
+  MIT licensed · built by <a href="https://github.com/i-rocky">i-rocky</a> ·
+  <a href="https://github.com/i-rocky/lsof">source on GitHub</a>
+</footer>
+
+</body>
+</html>
