@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>lsof for Windows — which process owns that port or file</title>
 <meta name="description" content="A Windows-native lsof-style tool: list TCP/UDP sockets with -i, filter by PID, get terse -t output, and find which process is holding a file via the Restart Manager.">
+<script src="https://cdn.jsdelivr.net/npm/x-zsh@0.7/x-zsh.min.js"></script>
 <style>
 :root {
   --bg: #0d1117;
@@ -90,10 +91,23 @@ a { color: var(--accent); }
     <a class="btn primary" href="#install">Install</a>
     <a class="btn ghost" href="https://github.com/i-rocky/lsof">GitHub</a>
   </div>
-  <div class="term hero-term"><span class="dim">&gt;</span> <span class="fill">lsof</span> -i :3000
-<span class="dim">COMMAND                     PID PROTO LOCAL_ADDRESS                  FOREIGN_ADDRESS                STATE</span>
-node.exe                   4312 TCP   0.0.0.0:3000                   0.0.0.0:0                      <span class="pct">LISTEN</span>
-node.exe                   4312 TCP   127.0.0.1:3000                 127.0.0.1:52114                ESTABLISHED</div>
+  <div class="hero-term">
+  <x-zsh os="windows" prompt-char="❯" height="300" loop loop-delay="3500">
+    note: who owns port 3000?
+    cmd: lsof -i :3000
+    COMMAND                     PID PROTO LOCAL_ADDRESS                  FOREIGN_ADDRESS                STATE
+    node.exe                   4312 TCP   0.0.0.0:3000                   0.0.0.0:0                      LISTEN
+    node.exe                   4312 TCP   127.0.0.1:3000                 127.0.0.1:52114                ESTABLISHED
+    delay[1200]:
+    cmd: lsof -t -i :3000
+    4312
+    note: terse mode — pipe it straight into taskkill
+    delay[1200]:
+    cmd: lsof file C:\logs\app.log
+    COMMAND                     PID
+    node.exe                   4312
+  </x-zsh>
+  </div>
 </header>
 
 <section class="wrap" id="why">
